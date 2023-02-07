@@ -791,36 +791,51 @@ namespace
 
         RenderEngine & operator=( const RenderEngine & ) = delete;
 
-        void toggleFullScreen() override
+        void toggleScreenMode() override
         {
             if ( _window == nullptr ) {
-                BaseRenderEngine::toggleFullScreen();
+                BaseRenderEngine::toggleScreenMode();
                 return;
             }
 
             uint32_t flags = SDL_GetWindowFlags( _window );
-            if ( ( flags & SDL_WINDOW_FULLSCREEN ) == SDL_WINDOW_FULLSCREEN || ( flags & SDL_WINDOW_FULLSCREEN_DESKTOP ) == SDL_WINDOW_FULLSCREEN_DESKTOP ) {
-                flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
-                flags &= ~SDL_WINDOW_FULLSCREEN;
-            }
-            else {
-#if defined( _WIN32 )
-                if ( fheroes2::cursor().isSoftwareEmulation() ) {
-                    flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+
+            const bool isFullScreen
+                = ( flags & SDL_WINDOW_FULLSCREEN ) == SDL_WINDOW_FULLSCREEN || ( flags & SDL_WINDOW_FULLSCREEN_DESKTOP ) == SDL_WINDOW_FULLSCREEN_DESKTOP;
+            const bool isBorderless = ( flags & SDL_WINDOW_BORDERLESS ) == SDL_WINDOW_BORDERLESS;
+
+            if ( isFullScreen ) {
+                if ( isBorderless ) {
+                    flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
+                    flags &= ~SDL_WINDOW_FULLSCREEN;
+                    flags &= ~SDL_WINDOW_BORDERLESS;
                 }
                 else {
-                    flags |= SDL_WINDOW_FULLSCREEN;
+                    flags |= SDL_WINDOW_BORDERLESS;
                 }
+            }
+            else if ( !isFullScreen ) {
+                if ( isBorderless ) {
+#if defined( _WIN32 )
+                    if ( fheroes2::cursor().isSoftwareEmulation() ) {
+                        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+                    }
+                    else {
+                        flags |= SDL_WINDOW_FULLSCREEN;
+                    }
 #else
-                flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+                    flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 #endif
+                    SDL_GetWindowSize( _window, &_windowedSize.width, &_windowedSize.height );
 
-                SDL_GetWindowSize( _window, &_windowedSize.width, &_windowedSize.height );
-
-                const fheroes2::Display & display = fheroes2::Display::instance();
-                if ( display.width() != 0 && display.height() != 0 ) {
-                    assert( display.scale() > 0 );
-                    SDL_SetWindowSize( _window, display.width() * display.scale(), display.height() * display.scale() );
+                    const fheroes2::Display & display = fheroes2::Display::instance();
+                    if ( display.width() != 0 && display.height() != 0 ) {
+                        assert( display.scale() > 0 );
+                        SDL_SetWindowSize( _window, display.width() * display.scale(), display.height() * display.scale() );
+                    }
+                }
+                else {
+                    flags &= ~SDL_WINDOW_BORDERLESS;
                 }
             }
 
@@ -829,9 +844,9 @@ namespace
                 ERROR_LOG( "Failed to set fullscreen mode flags. The error value: " << returnCode << ", description: " << SDL_GetError() )
             }
 
-            _syncFullScreen();
+            _syncScreenMode();
 
-            if ( !isFullScreen() && _windowedSize.width != 0 && _windowedSize.height != 0 ) {
+            if ( !isFullScreen && _windowedSize.width != 0 && _windowedSize.height != 0 ) {
                 SDL_SetWindowSize( _window, _windowedSize.width, _windowedSize.height );
             }
 
@@ -840,13 +855,21 @@ namespace
             _toggleMouseCaptureMode();
         }
 
-        bool isFullScreen() const override
+        fheroes2::ScreenMode getScreenMode() const override
         {
             if ( _window == nullptr )
-                return BaseRenderEngine::isFullScreen();
+                return BaseRenderEngine::getScreenMode();
 
             const uint32_t flags = SDL_GetWindowFlags( _window );
-            return ( flags & SDL_WINDOW_FULLSCREEN ) != 0 || ( flags & SDL_WINDOW_FULLSCREEN_DESKTOP ) != 0;
+            const bool isFullScreen = ( flags & SDL_WINDOW_FULLSCREEN ) != 0 || ( flags & SDL_WINDOW_FULLSCREEN_DESKTOP ) != 0;
+            const bool isBorderless = flags & SDL_WINDOW_BORDERLESS;
+            if ( isFullScreen && isBorderless )
+                return fheroes2::ScreenMode::FULLSCREEN_BORDERLESS;
+            if ( isFullScreen && !isBorderless )
+                return fheroes2::ScreenMode::FULLSCREEN;
+            if ( !isFullScreen && isBorderless )
+                return fheroes2::ScreenMode::BORDERLESS;
+            return fheroes2::ScreenMode::NORMAL;
         }
 
         std::vector<fheroes2::ResolutionInfo> getAvailableResolutions() const override
@@ -1039,7 +1062,7 @@ namespace
             SDL_RenderPresent( _renderer );
         }
 
-        bool allocate( fheroes2::ResolutionInfo & resolutionInfo, bool isFullScreen ) override
+        bool allocate( fheroes2::ResolutionInfo & resolutionInfo, bool isFullScreen, bool isBorderless ) override
         {
             clear();
 
@@ -1070,6 +1093,10 @@ namespace
 #endif
             }
 
+            if ( isBorderless ) {
+                flags |= SDL_WINDOW_BORDERLESS;
+            }
+
             flags |= SDL_WINDOW_RESIZABLE;
 
             _window = SDL_CreateWindow( _previousWindowTitle.data(), _prevWindowPos.x, _prevWindowPos.y, resolutionInfo.width * resolutionInfo.scale,
@@ -1081,7 +1108,7 @@ namespace
                 return false;
             }
 
-            _syncFullScreen();
+            _syncScreenMode();
 
             bool isPaletteModeSupported = false;
 
@@ -1292,12 +1319,12 @@ namespace
             return true;
         }
 
-        void _syncFullScreen()
+        void _syncScreenMode()
         {
-            if ( isFullScreen() != BaseRenderEngine::isFullScreen() ) {
-                BaseRenderEngine::toggleFullScreen();
+            if ( getScreenMode() != BaseRenderEngine::getScreenMode() ) {
+                BaseRenderEngine::setScreenmode( getScreenMode() );
 
-                assert( isFullScreen() == BaseRenderEngine::isFullScreen() );
+                assert( getScreenMode() == BaseRenderEngine::getScreenMode());
             }
         }
     };
@@ -1545,6 +1572,7 @@ namespace fheroes2
             return;
 
         const bool isFullScreen = _engine->isFullScreen();
+        const bool isBoderless = _engine->isBorderless();
 
         // deallocate engine resources
         _engine->clear();
@@ -1552,7 +1580,7 @@ namespace fheroes2
         _prevRoi = {};
 
         // allocate engine resources
-        if ( !_engine->allocate( info, isFullScreen ) ) {
+        if ( !_engine->allocate( info, isFullScreen, isBoderless ) ) {
             clear();
         }
 
@@ -1669,6 +1697,21 @@ namespace fheroes2
     bool Cursor::isFocusActive() const
     {
         return engine().isMouseCursorActive();
+    }
+
+    ScreenMode getNextScreenMode( ScreenMode mode )
+    {
+        switch ( mode ) {
+        case NORMAL:
+            return BORDERLESS;
+        case BORDERLESS:
+            return FULLSCREEN;
+        case FULLSCREEN:
+            return FULLSCREEN_BORDERLESS;
+        case FULLSCREEN_BORDERLESS:
+        default:;
+        }
+        return NORMAL;
     }
 
     BaseRenderEngine & engine()

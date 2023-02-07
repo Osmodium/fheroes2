@@ -66,6 +66,7 @@ namespace
         GLOBAL_SHOW_BUTTONS = 0x00000200,
         GLOBAL_SHOW_STATUS = 0x00000400,
         GLOBAL_FULLSCREEN = 0x00008000,
+        GLOBAL_BORDERLESS = 0x00008000,
         GLOBAL_3D_AUDIO = 0x00010000,
         GLOBAL_SYSTEM_INFO = 0x00020000,
         GLOBAL_CURSOR_SOFT_EMULATION = 0x00040000,
@@ -278,9 +279,10 @@ bool Settings::Read( const std::string & filePath )
         }
     }
 
-    // full screen
-    if ( config.Exists( "fullscreen" ) ) {
-        setFullScreen( config.StrParams( "fullscreen" ) == "on" );
+    // screen mode
+    if ( config.Exists( "screen mode" ) ) {
+        const fheroes2::ScreenMode mode = static_cast<fheroes2::ScreenMode>( config.IntParams( "screen mode" ) );
+        setScreenMode( mode );
     }
 
     if ( config.Exists( "controller pointer speed" ) ) {
@@ -401,8 +403,8 @@ std::string Settings::String() const
     os << std::endl << "# music volume: 0 - 10" << std::endl;
     os << "music volume = " << music_volume << std::endl;
 
-    os << std::endl << "# run in fullscreen mode: on/off" << std::endl;
-    os << "fullscreen = " << ( _optGlobal.Modes( GLOBAL_FULLSCREEN ) ? "on" : "off" ) << std::endl;
+    os << std::endl << "# run in fullscreen and or borderless mode: 0 (Normal), 1 (Borderless), 2 (Fullscreen), 3 (Fullscreen Borderless)" << std::endl;
+    os << "screen mode = " << std::to_string( ScreenMode() ) << std::endl;
 
     os << std::endl << "# print debug messages (only for development, see src/engine/logging.h for possible values)" << std::endl;
     os << "debug = " << Logging::getDebugLevel() << std::endl;
@@ -685,17 +687,30 @@ void Settings::setBattleShowArmyOrder( const bool enable )
     }
 }
 
-void Settings::setFullScreen( const bool enable )
+void Settings::setScreenMode( const fheroes2::ScreenMode mode )
 {
-    if ( enable ) {
-        _optGlobal.SetModes( GLOBAL_FULLSCREEN );
-    }
-    else {
+    switch ( mode ) {
+    case fheroes2::ScreenMode::NORMAL:
         _optGlobal.ResetModes( GLOBAL_FULLSCREEN );
+        _optGlobal.ResetModes( GLOBAL_BORDERLESS );
+        break;
+    case fheroes2::ScreenMode::BORDERLESS:
+        _optGlobal.ResetModes( GLOBAL_FULLSCREEN );
+        _optGlobal.SetModes( GLOBAL_BORDERLESS );
+        break;
+    case fheroes2::ScreenMode::FULLSCREEN:
+        _optGlobal.SetModes( GLOBAL_FULLSCREEN );
+        _optGlobal.ResetModes( GLOBAL_BORDERLESS );
+        break;
+    case fheroes2::ScreenMode::FULLSCREEN_BORDERLESS:
+        _optGlobal.SetModes( GLOBAL_FULLSCREEN );
+        _optGlobal.SetModes( GLOBAL_BORDERLESS );
+        break;
+    default:;
     }
 
-    if ( enable != fheroes2::engine().isFullScreen() ) {
-        fheroes2::engine().toggleFullScreen();
+    if ( mode != fheroes2::engine().getScreenMode() ) {
+        fheroes2::engine().toggleScreenMode();
         fheroes2::Display::instance().render();
     }
 }
@@ -1037,9 +1052,17 @@ void Settings::SetShowStatus( bool f )
     f ? _optGlobal.SetModes( GLOBAL_SHOW_STATUS ) : _optGlobal.ResetModes( GLOBAL_SHOW_STATUS );
 }
 
-bool Settings::FullScreen() const
+fheroes2::ScreenMode Settings::ScreenMode() const
 {
-    return _optGlobal.Modes( GLOBAL_FULLSCREEN );
+    const bool fullscreen = _optGlobal.Modes( GLOBAL_FULLSCREEN );
+    const bool borderless = _optGlobal.Modes( GLOBAL_BORDERLESS );
+    if ( !fullscreen ) {
+        if (borderless) {
+            return fheroes2::ScreenMode::BORDERLESS;
+        }
+        return fheroes2::ScreenMode::NORMAL;
+    }
+    return borderless ? fheroes2::ScreenMode::FULLSCREEN_BORDERLESS : fheroes2::ScreenMode::FULLSCREEN;
 }
 
 bool Settings::isVSyncEnabled() const

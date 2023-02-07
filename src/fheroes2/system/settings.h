@@ -158,7 +158,7 @@ public:
         pos_stat = pt;
     }
 
-    bool FullScreen() const;
+    fheroes2::ScreenMode ScreenMode() const;
     bool ShowControlPanel() const;
     bool ShowRadar() const;
     bool ShowIcons() const;
@@ -236,7 +236,7 @@ public:
     void setBattleAutoResolve( bool enable );
     void setBattleAutoSpellcast( bool enable );
     void setBattleShowArmyOrder( const bool enable );
-    void setFullScreen( const bool enable );
+    void setScreenMode( const fheroes2::ScreenMode mode);
     void setMonochromeCursor( const bool enable );
     void setTextSupportMode( const bool enable );
     void set3DAudio( const bool enable );

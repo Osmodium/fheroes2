@@ -125,7 +125,7 @@ namespace
         hotKeyEventInfo[hotKeyEventToInt( Game::HotKeyEvent::DEFAULT_UP )] = { HotKeyCategory::DEFAULT, "default up", fheroes2::Key::KEY_UP };
         hotKeyEventInfo[hotKeyEventToInt( Game::HotKeyEvent::DEFAULT_DOWN )] = { HotKeyCategory::DEFAULT, "default down", fheroes2::Key::KEY_DOWN };
 
-        hotKeyEventInfo[hotKeyEventToInt( Game::HotKeyEvent::GLOBAL_TOGGLE_FULLSCREEN )] = { HotKeyCategory::GLOBAL, "toggle fullscreen", fheroes2::Key::KEY_F4 };
+        hotKeyEventInfo[hotKeyEventToInt( Game::HotKeyEvent::GLOBAL_TOGGLE_SCREEN_MODE )] = { HotKeyCategory::GLOBAL, "toggle fullscreen", fheroes2::Key::KEY_F4 };
         hotKeyEventInfo[hotKeyEventToInt( Game::HotKeyEvent::GLOBAL_TOGGLE_TEXT_SUPPORT_MODE )]
             = { HotKeyCategory::GLOBAL, "toggle text support mode", fheroes2::Key::KEY_F10 };
 
@@ -380,8 +380,8 @@ void Game::globalKeyDownEvent( const fheroes2::Key key, const int32_t modifier )
 
     Settings & conf = Settings::Get();
 
-    if ( key == hotKeyEventInfo[hotKeyEventToInt( HotKeyEvent::GLOBAL_TOGGLE_FULLSCREEN )].key ) {
-        conf.setFullScreen( !conf.FullScreen() );
+    if ( key == hotKeyEventInfo[hotKeyEventToInt( HotKeyEvent::GLOBAL_TOGGLE_SCREEN_MODE )].key ) {
+        conf.setScreenMode( fheroes2::getNextScreenMode( conf.ScreenMode() ) );
         conf.Save( Settings::configFileName );
     }
     else if ( key == hotKeyEventInfo[hotKeyEventToInt( HotKeyEvent::GLOBAL_TOGGLE_TEXT_SUPPORT_MODE )].key ) {

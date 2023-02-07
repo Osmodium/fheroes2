@@ -34,6 +34,14 @@ namespace fheroes2
     class Cursor;
     class Display;
 
+    enum ScreenMode : int32_t
+    {
+        NORMAL,
+        BORDERLESS,
+        FULLSCREEN,
+        FULLSCREEN_BORDERLESS
+    };
+
     struct ResolutionInfo
     {
         ResolutionInfo() = default;
@@ -76,14 +84,42 @@ namespace fheroes2
 
         virtual ~BaseRenderEngine() = default;
 
-        virtual void toggleFullScreen()
+        virtual void setScreenmode( ScreenMode mode )
         {
-            _isFullScreen = !_isFullScreen;
+            _screenMode = mode;
+        }
+
+        virtual void toggleScreenMode()
+        {
+            switch (_screenMode) {
+            case NORMAL:
+                _screenMode = BORDERLESS;
+                break;
+            case BORDERLESS:
+                _screenMode = FULLSCREEN;
+                break;
+            case FULLSCREEN:
+                _screenMode = FULLSCREEN_BORDERLESS;
+                break;
+            case FULLSCREEN_BORDERLESS:
+            default:
+                _screenMode = NORMAL;
+            }
+        }
+
+        virtual ScreenMode getScreenMode() const
+        {
+            return _screenMode;
         }
 
         virtual bool isFullScreen() const
         {
-            return _isFullScreen;
+            return ( _screenMode & FULLSCREEN ) == FULLSCREEN || ( _screenMode & FULLSCREEN_BORDERLESS ) == FULLSCREEN_BORDERLESS;
+        }
+
+        virtual bool isBorderless() const
+        {
+            return ( _screenMode & BORDERLESS ) == BORDERLESS || ( _screenMode & FULLSCREEN_BORDERLESS ) == FULLSCREEN_BORDERLESS;
         }
 
         virtual std::vector<ResolutionInfo> getAvailableResolutions() const
@@ -128,7 +164,7 @@ namespace fheroes2
 
     protected:
         BaseRenderEngine()
-            : _isFullScreen( false )
+            : _screenMode( NORMAL )
             , _nearestScaling( false )
         {
             // Do nothing.
@@ -144,7 +180,7 @@ namespace fheroes2
             // Do nothing.
         }
 
-        virtual bool allocate( ResolutionInfo & /*unused*/, bool /*unused*/ )
+        virtual bool allocate( ResolutionInfo & /*unused*/, bool /*unused*/, bool /*unused*/ )
         {
             return false;
         }
@@ -163,7 +199,7 @@ namespace fheroes2
         void linkRenderSurface( uint8_t * surface ) const; // declaration of this method is in source file
 
     private:
-        bool _isFullScreen;
+        ScreenMode _screenMode;
 
         bool _nearestScaling;
     };
@@ -315,4 +351,6 @@ namespace fheroes2
 
     BaseRenderEngine & engine();
     Cursor & cursor();
+
+    ScreenMode getNextScreenMode( ScreenMode mode );
 }

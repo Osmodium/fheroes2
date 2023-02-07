@@ -83,11 +83,14 @@ namespace
         if ( fheroes2::engine().isFullScreen() ) {
             fheroes2::Sprite icon = originalIcon;
             fheroes2::Resize( originalIcon, 6, 6, 53, 53, icon, 2, 2, 61, 61 );
-
-            fheroes2::drawOption( optionRoi, icon, _( "window|Mode" ), _( "Fullscreen" ), fheroes2::UiOptionTextWidth::TWO_ELEMENTS_ROW );
+            fheroes2::drawOption( optionRoi, icon, _( "window|Mode" ),
+                                  _( fheroes2::engine().getScreenMode() == fheroes2::BORDERLESS ? "Fullscreen borderless" : "Fullscreen" ),
+                                  fheroes2::UiOptionTextWidth::TWO_ELEMENTS_ROW );
         }
         else {
-            fheroes2::drawOption( optionRoi, originalIcon, _( "window|Mode" ), _( "Windowed" ), fheroes2::UiOptionTextWidth::TWO_ELEMENTS_ROW );
+            fheroes2::drawOption( optionRoi, originalIcon, _( "window|Mode" ),
+                                  _( fheroes2::engine().getScreenMode() == fheroes2::BORDERLESS ? "Windowed borderless" : "Windowed" ),
+                                  fheroes2::UiOptionTextWidth::TWO_ELEMENTS_ROW );
         }
     }
 
@@ -188,7 +191,7 @@ namespace
                 fheroes2::showStandardTextMessage( _( "Select Game Resolution" ), _( "Change the resolution of the game." ), 0 );
             }
             else if ( le.MousePressRight( windowModeRoi ) ) {
-                fheroes2::showStandardTextMessage( _( "window|Mode" ), _( "Toggle between fullscreen and windowed modes." ), 0 );
+                fheroes2::showStandardTextMessage( _( "window|Mode" ), _( "Toggle between fullscreen, windowed and borderless modes." ), 0 );
             }
             else if ( le.MousePressRight( windowVSyncRoi ) ) {
                 fheroes2::showStandardTextMessage( _( "V-Sync" ), _( "The V-Sync option can be enabled to resolve flickering issues on some monitors." ), 0 );
@@ -237,7 +240,7 @@ namespace fheroes2
                 windowType = SelectedWindow::Configuration;
                 break;
             case SelectedWindow::Mode:
-                conf.setFullScreen( !conf.FullScreen() );
+                conf.setScreenMode( getNextScreenMode( conf.ScreenMode() ) );
                 conf.Save( Settings::configFileName );
                 windowType = SelectedWindow::Configuration;
                 break;

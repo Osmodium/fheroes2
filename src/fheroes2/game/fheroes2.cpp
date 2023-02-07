@@ -88,7 +88,7 @@ namespace
 
             // Fullscreen mode can be enabled by default for some devices, we need to forcibly
             // synchronize reality with the default config if config file was not read
-            conf.setFullScreen( conf.FullScreen() );
+            conf.setScreenMode( conf.ScreenMode() );
         }
     }
 
